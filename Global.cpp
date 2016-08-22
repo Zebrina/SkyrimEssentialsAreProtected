@@ -2,10 +2,11 @@
 
 #include "skse/PluginAPI.h"
 
-SKSEMessagingInterface*	Global::MessagingInterface;
-SKSETaskInterface*		Global::TaskInterface;
-SKSEPapyrusInterface*	Global::PapyrusInterface;
-SKSEScaleformInterface* Global::ScaleformInterface;
+SKSEMessagingInterface*			Global::MessagingInterface;
+SKSESerializationInterface*		Global::SerializationInterface;
+SKSETaskInterface*				Global::TaskInterface;
+SKSEPapyrusInterface*			Global::PapyrusInterface;
+SKSEScaleformInterface*			Global::ScaleformInterface;
 
 bool Global::QueryInterfaces(const SKSEInterface* skse, UInt32 interfaces) {
 	if (interfaces & kInterface_Messaging) {
@@ -23,6 +24,21 @@ bool Global::QueryInterfaces(const SKSEInterface* skse, UInt32 interfaces) {
 		}
 	}
 
+	if (interfaces & kInterface_Serialization) {
+		// get the task interface and query its version
+		Global::SerializationInterface = (SKSESerializationInterface*)skse->QueryInterface(kInterface_Serialization);
+		if (!Global::SerializationInterface) {
+			_MESSAGE("\tcouldn't get serialization interface");
+
+			return false;
+		}
+		if (Global::SerializationInterface->version < SKSESerializationInterface::kVersion) {
+			_MESSAGE("\tserialization interface too old (%d expected %d)", Global::SerializationInterface->version, SKSESerializationInterface::kVersion);
+
+			return false;
+		}
+	}
+
 	if (interfaces & kInterface_Task) {
 		// get the task interface and query its version
 		Global::TaskInterface = (SKSETaskInterface*)skse->QueryInterface(kInterface_Task);
@@ -32,7 +48,7 @@ bool Global::QueryInterfaces(const SKSEInterface* skse, UInt32 interfaces) {
 			return false;
 		}
 		if (Global::TaskInterface->kInterfaceVersion < SKSETaskInterface::kInterfaceVersion) {
-			_MESSAGE("\task interface too old (%d expected %d)", Global::TaskInterface->interfaceVersion, SKSETaskInterface::kInterfaceVersion);
+			_MESSAGE("\ttask interface too old (%d expected %d)", Global::TaskInterface->interfaceVersion, SKSETaskInterface::kInterfaceVersion);
 
 			return false;
 		}
