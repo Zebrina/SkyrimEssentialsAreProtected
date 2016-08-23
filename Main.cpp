@@ -22,32 +22,37 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 		_MESSAGE("kMessage_DataLoaded begin");
 
 		enum {
-			kFlag_Essential = 0x0002,
-			kFlag_Unique = 0x0040,
-			kFlag_Protected = 0x0800,
+			kFlag_Essential		= 0x00000002,
+			kFlag_Unique		= 0x00000040,
+			kFlag_Protected		= 0x00000800,
+			kFlag_IsGhost		= 0x20000000,
+			kFlag_Invulnerable	= 0x80000000,
 		};
 
 		DataHandler* dataHandler = DataHandler::GetSingleton();
 		if (dataHandler) {
+			BGSKeyword* keywordActorTypeNPC = static_cast<BGSKeyword*>(LookupFormByID(0x00013794));
+
 			UInt32 flags = kFlag_Essential;
 			if (GetPrivateProfileInt(Section1, "bMakeAllUniqueNpcsProtected", 0, ConfigFile) != 0) {
 				_SetFlags(flags, kFlag_Unique);
 			}
 
+			bool makeFollowersProtected = GetPrivateProfileInt(Section1, "bMakeAllPotentialFollowersProtected", 0, ConfigFile) != 0;
 			bool removeFollowerLevelCap = GetPrivateProfileInt(Section2, "bRemoveFollowerLevelCap", 0, ConfigFile) != 0;
 
 			for (UInt32 i = 0; i < dataHandler->npcs.count; ++i) {
 				TESNPC* npc = dataHandler->npcs[i];
 
 				if (npc) {
-					if (_TestFlags(npc->actorData.flags, flags)) {
+					if (_TestFlagsOR(npc->actorData.flags, flags) && _TestFlagsNOT(npc->actorData.flags, kFlag_IsGhost | kFlag_Invulnerable) && npc->race.race->keyword.HasKeyword(keywordActorTypeNPC)) {
 						_ClearFlags(npc->actorData.flags, kFlag_Essential);
 						_SetFlags(npc->actorData.flags, kFlag_Protected);
 
-						_MESSAGE("0x%.8x (%s) is now protected", npc->formID, npc->fullName.GetName());
+						_MESSAGE("non-playing character '%s' (0x%.8x) is now protected", npc->fullName.GetName(), npc->formID);
 					}
 
-					if (removeFollowerLevelCap) {
+					if (removeFollowerLevelCap || makeFollowersProtected) {
 						//_MESSAGE("0x%.8x (%s) factions:", npc->formID, npc->fullName.GetName());
 
 						for (UInt32 i = 0; i < npc->actorData.factions.count; ++i) {
@@ -57,9 +62,14 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 
 							// Check if npc is in PotentialFollowerFaction.
 							if (faction.faction->formID == 0x0005c84du && faction.rank >= 0) {
-								npc->actorData.maxLevel = 0;
-
-								_MESSAGE("removed level cap for potential follower '%s' (0x%.8x)", npc->fullName.GetName(), npc->formID);
+								if (makeFollowersProtected) {
+									_SetFlags(npc->actorData.flags, kFlag_Protected);
+									_MESSAGE("potential follower '%s' (0x%.8x) is now protected", npc->fullName.GetName(), npc->formID);
+								}
+								if (makeFollowersProtected) {
+									npc->actorData.maxLevel = 0;
+									_MESSAGE("removed level cap for potential follower '%s' (0x%.8x)", npc->fullName.GetName(), npc->formID);
+								}
 
 								break;
 							}
