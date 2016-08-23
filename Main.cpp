@@ -9,7 +9,7 @@
 #include "skse/GameObjects.h"
 
 constexpr char* PluginName = "Essentials Are Protected";
-constexpr char* ConfigFile = "EssentialsAreProtected.ini";
+constexpr char* ConfigFile = "Data\\SKSE\\Plugins\\EssentialsAreProtected.ini";
 constexpr char* Section1 = "MustBeChangedBeforeNpcIsSpawned";
 constexpr char* Section2 = "CanBeChangedAtAnyTime";
 
@@ -27,21 +27,10 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 			kFlag_Protected = 0x0800,
 		};
 
-		class IsInFaction : public Actor::FactionVisitor {
-		public:
-			TESFaction* factionToLookFor;
-
-			IsInFaction(TESFaction* faction) : factionToLookFor(faction) {}
-
-			virtual bool Accept(TESFaction* faction, SInt8 rank) {
-				return !(faction == factionToLookFor && rank >= 0);
-			}
-		};
-
 		DataHandler* dataHandler = DataHandler::GetSingleton();
 		if (dataHandler) {
 			UInt32 flags = kFlag_Essential;
-			if (GetPrivateProfileInt(Section1, "bMakeAllUniqueNpcsProtected", 0, ConfigFile)) {
+			if (GetPrivateProfileInt(Section1, "bMakeAllUniqueNpcsProtected", 0, ConfigFile) != 0) {
 				_SetFlags(flags, kFlag_Unique);
 			}
 
@@ -55,17 +44,22 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 						_ClearFlags(npc->actorData.flags, kFlag_Essential);
 						_SetFlags(npc->actorData.flags, kFlag_Protected);
 
-						//_MESSAGE("\t0x%.8x (%s) is now protected", npc->formID, npc->fullName.GetName());
+						_MESSAGE("0x%.8x (%s) is now protected", npc->formID, npc->fullName.GetName());
 					}
 
-					if (removeFollowerLevelCap && _TestFlags(npc->actorData.flags, kFlag_Unique)) {
-						TESActorBaseData::FactionInfo faction;
-						for (UInt32 i = 0; npc->actorData.factions.GetNthItem(i, faction); ++i) {
+					if (removeFollowerLevelCap) {
+						//_MESSAGE("0x%.8x (%s) factions:", npc->formID, npc->fullName.GetName());
+
+						for (UInt32 i = 0; i < npc->actorData.factions.count; ++i) {
+							TESActorBaseData::FactionInfo faction = npc->actorData.factions[i];
+
+							//_MESSAGE("\t%s", faction.faction->fullName.GetName());
+
 							// Check if npc is in PotentialFollowerFaction.
-							if (faction.faction->formID == 0x0005c84d && faction.rank >= 0) {
+							if (faction.faction->formID == 0x0005c84du && faction.rank >= 0) {
 								npc->actorData.maxLevel = 0;
 
-								_MESSAGE("\tremoved level cap for potential follower '%s' (0x%.8x)", npc->fullName.GetName(), npc->formID);
+								_MESSAGE("removed level cap for potential follower '%s' (0x%.8x)", npc->fullName.GetName(), npc->formID);
 
 								break;
 							}
