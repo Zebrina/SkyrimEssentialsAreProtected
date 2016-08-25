@@ -39,7 +39,7 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 			}
 
 			bool makeFollowersProtected = GetPrivateProfileInt(Section1, "bMakeAllPotentialFollowersProtected", 0, ConfigFile) != 0;
-			bool removeFollowerLevelCap = GetPrivateProfileInt(Section2, "bRemoveFollowerLevelCap", 0, ConfigFile) != 0;
+			bool removeFollowerLevelCap = GetPrivateProfileInt(Section1, "bRemoveFollowerLevelCap", 0, ConfigFile) != 0;
 
 			for (UInt32 i = 0; i < dataHandler->npcs.count; ++i) {
 				TESNPC* npc = dataHandler->npcs[i];
@@ -62,11 +62,12 @@ void Messaging_Callback(SKSEMessagingInterface::Message* msg) {
 
 							// Check if npc is in PotentialFollowerFaction.
 							if (faction.faction->formID == 0x0005c84du && faction.rank >= 0) {
-								if (makeFollowersProtected) {
+								if (makeFollowersProtected && _TestFlagsNOT(npc->actorData.flags, kFlag_Protected)) {
+									_ClearFlags(npc->actorData.flags, kFlag_Essential);
 									_SetFlags(npc->actorData.flags, kFlag_Protected);
 									_MESSAGE("potential follower '%s' (0x%.8x) is now protected", npc->fullName.GetName(), npc->formID);
 								}
-								if (makeFollowersProtected) {
+								if (removeFollowerLevelCap) {
 									npc->actorData.maxLevel = 0;
 									_MESSAGE("removed level cap for potential follower '%s' (0x%.8x)", npc->fullName.GetName(), npc->formID);
 								}
